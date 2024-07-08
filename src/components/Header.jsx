@@ -1,8 +1,14 @@
+"use client"
+
+import { signIn, signOut, useSession } from "next-auth/react"
 import Link from "next/link"
 import React from "react"
 import { FaInstagramSquare } from "react-icons/fa"
 
 export default function Header() {
+  const { data: session } = useSession()
+  // console.log(session)
+
   return (
     <div className="shadow-sm border-b sticky top-0 bg-white z-30 p-3">
       <div className="flex justify-between items-center max-w-6xl mx-auto">
@@ -24,9 +30,21 @@ export default function Header() {
           className="bg-gray-50 border border-gray-200 rounded text-sm w-full py-2 px-4 max-w-[300px] lg:max-w-[400px]"
         />
 
-        <button className="text-md font-semibold text-blue-500 border border-blue-500 p-3 hover:text-white hover:bg-blue-500 transition ease-in-out">
-          Log In
-        </button>
+        {session ? (
+          <img
+            src={session.user.image}
+            alt={session.user.name}
+            className="h-10 w-10 rounded-full cursor-pointer"
+            onClick={signOut}
+          />
+        ) : (
+          <button
+            onClick={signIn}
+            className="text-md font-semibold text-blue-500 border border-blue-500 p-3 hover:text-white hover:bg-blue-500 transition ease-in-out"
+          >
+            Log In
+          </button>
+        )}
       </div>
     </div>
   )
