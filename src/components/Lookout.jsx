@@ -10,7 +10,9 @@ export default function Lookout() {
       </section>
 
       <section className="hidden md:inline-grid md:col-span-1">
-        <Profile />
+        <div className="fixed w-[380px]">
+          <Profile />
+        </div>
       </section>
     </main>
   )
