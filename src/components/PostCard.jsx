@@ -1,5 +1,6 @@
 import React from "react"
 import { HiOutlineDotsVertical } from "react-icons/hi"
+import Like from "./Like"
 
 export default function PostCard({ post }) {
   return (
@@ -21,6 +22,8 @@ export default function PostCard({ post }) {
         alt={post.caption}
         className="object-contain w-full h-fit"
       />
+
+      <Like id={post.id} />
 
       <p className="p-5 truncate">
         <span className="font-bold mr-2">{post.username}</span>
