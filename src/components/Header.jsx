@@ -2,19 +2,110 @@
 
 import { signIn, signOut, useSession } from "next-auth/react"
 import Link from "next/link"
-import React, { useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { FaInstagramSquare } from "react-icons/fa"
 import { IoMdAddCircleOutline } from "react-icons/io"
 import { FaCamera } from "react-icons/fa"
 import { AiOutlineClose } from "react-icons/ai"
 
+import {
+  getDownloadURL,
+  getStorage,
+  ref,
+  uploadBytesResumable,
+} from "firebase/storage"
+
+import {
+  addDoc,
+  collection,
+  getFirestore,
+  serverTimestamp,
+} from "firebase/firestore"
+
 import Modal from "react-modal"
+import { app } from "@/firebase"
 
 export default function Header() {
   const { data: session } = useSession()
-  // console.log(session)
+  console.log(session)
 
   const [isOpen, setIsOpen] = useState(false)
+
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [imageFileUrl, setImageFileUrl] = useState(null)
+  const [imageFileUploading, setImageFileUploading] = useState(false)
+
+  const [postUploading, setPostUploading] = useState(false)
+  const [caption, setCaption] = useState("")
+
+  const filePickerRef = useRef(null)
+
+  const db = getFirestore(app)
+
+  function addImageToPost(e) {
+    const file = e.target.files[0]
+
+    if (file) {
+      setSelectedFile(file)
+      setImageFileUrl(URL.createObjectURL(file))
+    }
+  }
+
+  // console.log(imageFileUrl)
+
+  useEffect(() => {
+    if (selectedFile) {
+      uploadImageToPost()
+    }
+  }, [selectedFile])
+
+  async function uploadImageToPost() {
+    setImageFileUploading(true)
+
+    const storage = getStorage(app)
+
+    const fileName = new Date().getTime() + "-" + selectedFile.name
+
+    const storageRef = ref(storage, fileName)
+
+    const uploadTask = uploadBytesResumable(storageRef, selectedFile)
+
+    uploadTask.on(
+      "state_changed",
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+
+        console.log("uploading" + progress + "% done")
+      },
+      (error) => {
+        console.log(error)
+        setImageFileUploading(false)
+        setImageFileUrl(null)
+        setSelectedFile(null)
+      },
+      () => {
+        getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+          setImageFileUrl(downloadURL)
+          setImageFileUploading(false)
+        })
+      }
+    )
+  }
+
+  async function handleSubmit() {
+    setPostUploading(true)
+
+    const docRef = await addDoc(collection(db, "posts"), {
+      username: session.user.username,
+      caption,
+      profileImg: session.user.image,
+      image: imageFileUrl,
+      timestamp: serverTimestamp(),
+    })
+
+    setPostUploading(false)
+    setIsOpen(false)
+  }
 
   return (
     <div className="shadow-sm border-b sticky top-0 bg-white z-30 p-3">
@@ -69,7 +160,29 @@ export default function Header() {
           ariaHideApp={false}
         >
           <div className="flex flex-col justify-center items-center h-[100%]">
-            <FaCamera className="text-6xl text-gray-400 cursor-pointer" />
+            {selectedFile ? (
+              <img
+                onClick={() => setSelectedFile(null)}
+                src={imageFileUrl}
+                alt="selected file"
+                className={`w-full max-h-[250px] object-cover cursor-pointer ${
+                  imageFileUploading ? "animate-pulse" : ""
+                }`}
+              />
+            ) : (
+              <FaCamera
+                onClick={() => filePickerRef.current.click()}
+                className="text-6xl text-gray-400 cursor-pointer"
+              />
+            )}
+
+            <input
+              hidden
+              ref={filePickerRef}
+              type="file"
+              accept="image/*"
+              onChange={addImageToPost}
+            />
           </div>
 
           <input
@@ -77,16 +190,24 @@ export default function Header() {
             maxLength="150"
             placeholder="Enter Caption..."
             className="m-4 border-none text-center w-full focus:ring-0 outline-none"
+            onChange={(e) => setCaption(e.target.value)}
           />
+
           <button
-            disabled
+            onClick={handleSubmit}
+            disabled={
+              !selectedFile ||
+              caption.trim() === "" ||
+              postUploading ||
+              imageFileUploading
+            }
             className="w-full bg-green-600 text-white p-2 shadow-md rounded-lg hover:brightness-105 disabled:bg-gray-500 disabled:cursor-not-allowed disabled:hover:brightness-100 "
           >
             Upload Post
           </button>
 
           <AiOutlineClose
-            className="text-xl cursor-pointer absolute top-2 right-2 text-red-500 transition duration-300 border border-red-500 m-1 hover:bg-red-500 hover:text-white"
+            className="text-xl cursor-pointer absolute top-2 right-2 text-red-500 transition duration-300 border border-red-500  hover:bg-red-500 hover:text-white"
             onClick={() => setIsOpen(false)}
           />
         </Modal>
