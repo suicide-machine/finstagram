@@ -1,6 +1,7 @@
 import React from "react"
 import { HiOutlineDotsVertical } from "react-icons/hi"
 import Like from "./Like"
+import Comment from "./Comment"
 
 export default function PostCard({ post }) {
   return (
@@ -29,6 +30,8 @@ export default function PostCard({ post }) {
         <span className="font-bold mr-2">{post.username}</span>
         {post.caption}
       </p>
+
+      <Comment id={post.id} />
     </div>
   )
 }
